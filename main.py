@@ -1,10 +1,9 @@
 import asyncio
 import logging
 import sys
-from os import getenv
 from datetime import datetime
+from os import environ, execle, getenv
 from secrets import choice
-from threading import Event
 
 from pyrogram import Client, enums, filters
 from pyrogram.errors import (
@@ -21,7 +20,8 @@ list_chat = []
 
 API_HASH = getenv("API_HASH")
 API_ID = int(getenv("API_ID", ""))
-STRING_SESSION = getenv("STRING_SESSION", "") # string session pyrogram
+STRING_SESSION = getenv("STRING_SESSION", "")  # string session pyrogram
+DELAY = list(map(int, getenv("DELAY", "90 120 180").split()))
 
 user = Client(
     name="user",
@@ -32,6 +32,7 @@ user = Client(
 )
 
 SPAM_COUNT = [0]
+msg_limit = "Bot dimatikan\nKarena: akun terkena limit publik [ tidak bisa mengirim pesan di grup publik ] silahkan cek di @SpamBot"
 
 
 def increment_spam_count():
@@ -100,7 +101,7 @@ async def broadcast_cmd(client: Client, message: Message):
         )
     await message.edit("`Sedang mengirim pesan . . .`")
     while True:
-        await asyncio.sleep(choice([90, 120, 180]))  # detik
+        await asyncio.sleep(choice(DELAY))  # detik
         for chat in list_chat:
             try:
                 if message.reply_to_message:
@@ -122,9 +123,8 @@ async def broadcast_cmd(client: Client, message: Message):
                     await client.send_message(chat, text)
                     await asyncio.sleep(1)
             except UserBannedInChannel:
-                LOGS.error(
-                    "Bot dimatikan\nKarena: akun terkena limit publik [ tidak bisa mengirim pesan di grup publik ]"
-                )
+                LOGS.error(msg_limit)
+                await client.send_message("me", msg_limit)
                 sys.exit()
             except BaseException as e:
                 LOGS.error(e)
@@ -143,10 +143,9 @@ async def delayspam(client: Client, message: Message):
     if not spam_allowed():
         return
 
-    delaySpamEvent = Event()
     for i in range(0, count):
         if i != 0:
-            delaySpamEvent.wait(delay)
+            await asyncio.sleep(delay)
         try:
             await delayspam.copy(message.chat.id)
         except FloodWait as e:
@@ -158,9 +157,8 @@ async def delayspam(client: Client, message: Message):
             await asyncio.sleep(e.value)
             await delayspam.copy(message.chat.id)
         except UserBannedInChannel:
-            LOGS.error(
-                "Bot dimatikan\nKarena: akun terkena limit publik [ tidak bisa mengirim pesan di grup publik ]"
-            )
+            LOGS.error(msg_limit)
+            await client.send_message("me", msg_limit)
             sys.exit()
         except BaseException as e:
             LOGS.info(e)
@@ -171,6 +169,15 @@ async def delayspam(client: Client, message: Message):
     await client.send_message(
         "me", "**#DELAYSPAM**\nDelaySpam was executed successfully"
     )
+
+
+@user.on_message(filters.command(["restart", "reload"], ".") & filters.me)
+async def restart_bot(_, message: Message):
+    msg = await message.edit("`Restarting bot...`")
+    LOGS.info("BOT SERVER RESTARTED !!")
+    await msg.edit_text("✅ Bot has restarted !\n\n")
+    args = [sys.executable, "main.py"]
+    execle(sys.executable, *args, environ)
 
 
 logging.basicConfig(
