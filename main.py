@@ -21,7 +21,7 @@ list_chat = []
 API_HASH = getenv("API_HASH")
 API_ID = int(getenv("API_ID", ""))
 STRING_SESSION = getenv("STRING_SESSION", "")  # string session pyrogram
-DELAY = list(map(int, getenv("DELAY", "600 800 1000").split()))
+DELAY = list(map(int, getenv("DELAY", "1800 1900 2000").split()))
 
 user = Client(
     name="user",
